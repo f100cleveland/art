@@ -29,10 +29,10 @@ include art/build/Android.common_utils.mk
 #
 # Beware that tests may use the non-debug build for performance, notable 055-enum-performance
 #
-ART_BUILD_TARGET_NDEBUG ?= true
-ART_BUILD_TARGET_DEBUG ?= true
-ART_BUILD_HOST_NDEBUG ?= true
-ART_BUILD_HOST_DEBUG ?= true
+ART_BUILD_TARGET_NDEBUG := true
+ART_BUILD_TARGET_DEBUG := false
+ART_BUILD_HOST_NDEBUG := true
+ART_BUILD_HOST_DEBUG := false
 
 ifeq ($(ART_BUILD_TARGET_NDEBUG),false)
 $(info Disabling ART_BUILD_TARGET_NDEBUG)
@@ -72,10 +72,6 @@ ART_TARGET_CFLAGS :=
 
 # Host.
 ART_HOST_CLANG := false
-ifneq ($(WITHOUT_HOST_CLANG),true)
-  # By default, host builds use clang for better warnings.
-  ART_HOST_CLANG := true
-endif
 
 # Clang on the target. Target builds use GCC by default.
 ifneq ($(USE_CLANG_PLATFORM_BUILD),)
@@ -83,12 +79,12 @@ ART_TARGET_CLANG := $(USE_CLANG_PLATFORM_BUILD)
 else
 ART_TARGET_CLANG := false
 endif
-ART_TARGET_CLANG_arm :=
-ART_TARGET_CLANG_arm64 :=
-ART_TARGET_CLANG_mips :=
-ART_TARGET_CLANG_mips64 :=
-ART_TARGET_CLANG_x86 :=
-ART_TARGET_CLANG_x86_64 :=
+ART_TARGET_CLANG_arm := false
+ART_TARGET_CLANG_arm64 := false
+ART_TARGET_CLANG_mips := false
+ART_TARGET_CLANG_mips64 := false
+ART_TARGET_CLANG_x86 := false
+ART_TARGET_CLANG_x86_64 := false
 
 define set-target-local-clang-vars
     LOCAL_CLANG := $(ART_TARGET_CLANG)
@@ -109,9 +105,6 @@ ART_TARGET_CLANG_CFLAGS_x86_64 :=
 # These are necessary for Clang ARM64 ART builds. TODO: remove.
 ART_TARGET_CLANG_CFLAGS_arm64  += \
   -DNVALGRIND
-
-# Warn about thread safety violations with clang.
-art_clang_cflags := -Wthread-safety
 
 # Warn if switch fallthroughs aren't annotated.
 art_clang_cflags += -Wimplicit-fallthrough
@@ -202,8 +195,6 @@ art_cflags := \
 # Missing declarations: too many at the moment, as we use "extern" quite a bit.
 #  -Wmissing-declarations \
 
-
-
 ifdef ART_IMT_SIZE
   art_cflags += -DIMT_SIZE=$(ART_IMT_SIZE)
 else
@@ -233,10 +224,7 @@ art_non_debug_cflags := \
 
 # Cflags for debug ART and ART tools.
 art_debug_cflags := \
-  -O2 \
-  -DDYNAMIC_ANNOTATIONS_ENABLED=1 \
-  -DVIXL_DEBUG \
-  -UNDEBUG
+  -g0
 
 art_host_non_debug_cflags := $(art_non_debug_cflags)
 art_target_non_debug_cflags := $(art_non_debug_cflags)
@@ -246,16 +234,13 @@ ifeq ($(HOST_OS),linux)
   ifneq ($(ART_COVERAGE),true)
     ifneq ($(NATIVE_COVERAGE),true)
       ifndef SANITIZE_HOST
-        art_host_non_debug_cflags += -Wframe-larger-than=2700
+        art_host_non_debug_cflags +=
       endif
-      art_target_non_debug_cflags += -Wframe-larger-than=1728
+      art_target_non_debug_cflags +=
     endif
   endif
 endif
 
-ifndef LIBART_IMG_HOST_BASE_ADDRESS
-  $(error LIBART_IMG_HOST_BASE_ADDRESS unset)
-endif
 ART_HOST_CFLAGS += $(art_cflags) -DART_BASE_ADDRESS=$(LIBART_IMG_HOST_BASE_ADDRESS)
 ART_HOST_CFLAGS += -DART_DEFAULT_INSTRUCTION_SET_FEATURES=default
 

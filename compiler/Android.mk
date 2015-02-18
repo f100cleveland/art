@@ -233,7 +233,7 @@ $$(ENUM_OPERATOR_OUT_GEN): $$(GENERATED_SRC_DIR)/%_operator_out.cc : $(LOCAL_PAT
     $(call set-target-local-clang-vars)
     $(call set-target-local-cflags-vars,$(2))
   else # host
-    LOCAL_CLANG := $(ART_HOST_CLANG)
+    LOCAL_CLANG := $(use_clang)
     LOCAL_CFLAGS += $(ART_HOST_CFLAGS)
     LOCAL_LDLIBS := $(ART_HOST_LDLIBS)
     ifeq ($$(art_ndebug_or_debug),debug)
