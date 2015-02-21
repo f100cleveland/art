@@ -219,12 +219,10 @@ ifeq ($(ART_USE_TLAB),true)
 endif
 
 # Cflags for non-debug ART and ART tools.
-art_non_debug_cflags := \
-  -O3
+art_non_debug_cflags := -O3
 
 # Cflags for debug ART and ART tools.
-art_debug_cflags := \
-  -g0
+art_debug_cflags := $(art_non_debug_cflags)
 
 art_host_non_debug_cflags := $(art_non_debug_cflags)
 art_target_non_debug_cflags := $(art_non_debug_cflags)
