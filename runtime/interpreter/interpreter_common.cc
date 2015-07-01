@@ -19,6 +19,7 @@
 #include <cmath>
 
 #include "debugger.h"
+#include "entrypoints/runtime_asm_entrypoints.h"
 #include "mirror/array-inl.h"
 #include "unstarted_runtime.h"
 #include "verifier/method_verifier.h"
@@ -477,6 +478,23 @@ void AbortTransactionV(Thread* self, const char* fmt, va_list args) {
   Runtime::Current()->AbortTransactionAndThrowAbortError(self, abort_msg);
 }
 
+SHARED_LOCKS_REQUIRED(Locks::mutator_lock_)
+static inline bool NeedsInterpreter(Thread* self, ShadowFrame* new_shadow_frame) ALWAYS_INLINE;
+
+static inline bool NeedsInterpreter(Thread* self, ShadowFrame* new_shadow_frame) {
+  ArtMethod* target = new_shadow_frame->GetMethod();
+  if (UNLIKELY(target->IsNative() || target->IsProxyMethod())) {
+    return false;
+  }
+  Runtime* runtime = Runtime::Current();
+  ClassLinker* class_linker = runtime->GetClassLinker();
+  return runtime->GetInstrumentation()->IsForcedInterpretOnly() ||
+        // Doing this check avoids doing compiled/interpreter transitions.
+        class_linker->IsQuickToInterpreterBridge(target->GetEntryPointFromQuickCompiledCode()) ||
+        // Force the use of interpreter when it is required by the debugger.
+        Dbg::IsForcedInterpreterNeededForCalling(self, target);
+}
+
 template<bool is_range, bool do_assignability_check>
 bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
             const Instruction* inst, uint16_t inst_data, JValue* result) {
@@ -629,28 +647,11 @@ bool DoCall(ArtMethod* called_method, Thread* self, ShadowFrame& shadow_frame,
 
   // Do the call now.
   if (LIKELY(Runtime::Current()->IsStarted())) {
-    if (kIsDebugBuild && new_shadow_frame->GetMethod()->GetEntryPointFromInterpreter() == nullptr) {
-      LOG(FATAL) << "Attempt to invoke non-executable method: "
-          << PrettyMethod(new_shadow_frame->GetMethod());
-      UNREACHABLE();
-    }
-    if (kIsDebugBuild && Runtime::Current()->GetInstrumentation()->IsForcedInterpretOnly() &&
-        !new_shadow_frame->GetMethod()->IsNative() &&
-        !new_shadow_frame->GetMethod()->IsProxyMethod() &&
-        new_shadow_frame->GetMethod()->GetEntryPointFromInterpreter()
-            == artInterpreterToCompiledCodeBridge) {
-      LOG(FATAL) << "Attempt to call compiled code when -Xint: "
-          << PrettyMethod(new_shadow_frame->GetMethod());
-      UNREACHABLE();
-    }
-    // Force the use of interpreter when it is required by the debugger.
-    EntryPointFromInterpreter* entry;
-    if (UNLIKELY(Dbg::IsForcedInterpreterNeededForCalling(self, new_shadow_frame->GetMethod()))) {
-      entry = &art::artInterpreterToInterpreterBridge;
+    if (NeedsInterpreter(self, new_shadow_frame)) {
+      artInterpreterToInterpreterBridge(self, code_item, new_shadow_frame, result);
     } else {
-      entry = new_shadow_frame->GetMethod()->GetEntryPointFromInterpreter();
+      artInterpreterToCompiledCodeBridge(self, code_item, new_shadow_frame, result);
     }
-    entry(self, code_item, new_shadow_frame, result);
   } else {
     UnstartedRuntime::Invoke(self, code_item, new_shadow_frame, result, first_dest_reg);
   }
