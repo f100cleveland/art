@@ -784,7 +784,6 @@ void StackVisitor::WalkStack(bool include_transitions) {
               << " native=" << method->IsNative()
               << " entrypoints=" << method->GetEntryPointFromQuickCompiledCode()
               << "," << method->GetEntryPointFromJni()
-              << "," << method->GetEntryPointFromInterpreter()
               << " next=" << *cur_quick_frame_;
         }
 
