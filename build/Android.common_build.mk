@@ -61,13 +61,9 @@ ART_TARGET_CFLAGS :=
 ART_HOST_CLANG := false
 
 # Clang on the target. Target builds use GCC by default.
-ifneq ($(USE_CLANG_PLATFORM_BUILD),)
-ART_TARGET_CLANG := $(USE_CLANG_PLATFORM_BUILD)
-else
-ART_TARGET_CLANG := false
-endif
-ART_TARGET_CLANG_arm := false
-ART_TARGET_CLANG_arm64 := false
+ART_TARGET_CLANG := true
+ART_TARGET_CLANG_arm := true
+ART_TARGET_CLANG_arm64 := true
 
 define set-target-local-clang-vars
     LOCAL_CLANG := $(ART_TARGET_CLANG)
@@ -149,9 +145,9 @@ ifeq ($(HOST_OS),linux)
   ifneq ($(ART_COVERAGE),true)
     ifneq ($(NATIVE_COVERAGE),true)
       ifndef SANITIZE_HOST
-        art_host_non_debug_cflags +=
+        art_host_non_debug_cflags += -Wframe-larger-than=2700
       endif
-      art_target_non_debug_cflags +=
+      art_target_non_debug_cflags += -Wframe-larger-than=1728
     endif
   endif
 endif
