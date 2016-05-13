@@ -337,6 +337,12 @@ static size_t FixStackSize(size_t stack_size) {
   return stack_size;
 }
 
+__attribute__((noinline))
+static uint8_t* FindStackTop() {
+  return reinterpret_cast<uint8_t*>(
+      AlignDown(__builtin_frame_address(0), kPageSize));
+}
+
 // Install a protected region in the stack.  This is used to trigger a SIGSEGV if a stack
 // overflow is detected.  It is located right below the stack_begin_.
 //
@@ -350,9 +356,8 @@ static size_t FixStackSize(size_t stack_size) {
 // We then madvise this away.
 void Thread::InstallImplicitProtection() {
   uint8_t* pregion = tlsPtr_.stack_begin - kStackOverflowProtectedSize;
-  uint8_t* stack_himem = tlsPtr_.stack_end;
-  uint8_t* stack_top = reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(&stack_himem) &
-      ~(kPageSize - 1));    // Page containing current top of stack.
+  // Page containing current top of stack.
+  uint8_t* stack_top = FindStackTop();
 
   // First remove the protection on the protected region as will want to read and
   // write it.  This may fail (on the first attempt when the stack is not mapped)
@@ -708,8 +713,7 @@ bool Thread::InitStackHwm() {
   }
 
   // Sanity check.
-  int stack_variable;
-  CHECK_GT(&stack_variable, reinterpret_cast<void*>(tlsPtr_.stack_end));
+  CHECK_GT(FindStackTop(), reinterpret_cast<void*>(tlsPtr_.stack_end));
 
   return true;
 }
